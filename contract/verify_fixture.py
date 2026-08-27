@@ -10,6 +10,14 @@
   4. macOS(Swift) 구현이 골든과 byte-for-byte 같은지  ← 실제 컴파일·실행
   5. 골든 헤더가 펌웨어에서 실제로 컴파일되는지        ← arduino-cli
 """
+import io as _io, sys as _sys
+# Windows 콘솔은 기본이 cp1252 라 한글 출력에서 죽는다. 직접 돌릴 때도 되게 여기서 고친다.
+for _s in (_sys.stdout, _sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 import json, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
