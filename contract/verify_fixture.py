@@ -22,9 +22,16 @@ import json, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
 HERE = Path(__file__).parent
-# 이 저장소에서는 HERE.parent 가 루트다. 펌웨어 트리는 없을 수도 있고,
+# 펌웨어 트리를 위로 올라가며 찾는다. 계약만 떼어 낸 저장소에는 없을 수 있고,
 # 없으면 5번 단계를 건너뛴다 (실패가 아니다).
-ROOT = HERE.parent
+def _find_firmware(start):
+    for d in [start, *start.parents]:
+        cand = d / "firmware"
+        if (cand / "build.sh").exists():
+            return cand.parent
+    return start
+
+ROOT = _find_firmware(HERE.parent)
 FW = ROOT / "firmware"
 fails: list[str] = []
 skips: list[str] = []
