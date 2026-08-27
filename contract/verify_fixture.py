@@ -73,74 +73,109 @@ r = subprocess.run([sys.executable, str(HERE / "generate.py"), "--check"],
                    capture_output=True, text=True, encoding="utf-8", errors="replace")
 check("generated/ 와 골든이 계약과 최신", r.returncode == 0, r.stdout.strip())
 
-print("3) macOS(Swift) 구현 ↔ 골든 헤더")
+print("3) macOS(Swift) 구현 ↔ 골든")
 swiftc = shutil.which("swiftc")
 if not swiftc:
     skip("Swift 출력 비교", "swiftc 없음")
 else:
+    SWIFT_MAIN = "\n".join([
+        "import Foundation",
+        "@main struct G {",
+        "  static func main() throws {",
+        "    let d = CommandLine.arguments[1]",
+        "    let sens = Dictionary(uniqueKeysWithValues: Contract.sensitivity.map { ($0.key, $0.value.def) })",
+        "    let names = Dictionary(uniqueKeysWithValues: Contract.profiles.map { ($0.tag, $0.defaultName) })",
+        "    try Contract.sensitivityHeader(sens).write(toFile: d + \"/sensitivity_override.h\", atomically: true, encoding: .utf8)",
+        "    try Contract.mappingHeader(profileCount: Contract.defaultProfileCount, names: names,",
+        "                               mappings: Contract.defaultMappings).write(",
+        "        toFile: d + \"/mapping_override.h\", atomically: true, encoding: .utf8)",
+        "    // 골든 프리셋을 읽어 다시 쓴다 — 왕복이 byte 단위로 보존돼야 한다.",
+        "    let src = try String(contentsOfFile: CommandLine.arguments[2], encoding: .utf8)",
+        "    let p = try Contract.decodePreset(src)",
+        "    try Contract.encodePreset(p).write(toFile: d + \"/preset.json\", atomically: true, encoding: .utf8)",
+        "    // 그 프리셋으로 헤더도 만들어 본다 (불러오기 → 저장 경로 전체)",
+        "    try Contract.mappingHeader(profileCount: p.profileCount, names: p.profileNames,",
+        "                               mappings: p.mappings).write(",
+        "        toFile: d + \"/from_preset_mapping.h\", atomically: true, encoding: .utf8)",
+        "  }",
+        "}",
+    ])
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
-        (td / "main.swift").write_text('''import Foundation
-@main struct G {
-  static func main() {
-    let sens = Dictionary(uniqueKeysWithValues: Contract.sensitivity.map { ($0.key, $0.value.def) })
-    let names = Dictionary(uniqueKeysWithValues: Contract.profiles.map { ($0.tag, $0.defaultName) })
-    let d = CommandLine.arguments[1]
-    try! Contract.sensitivityHeader(sens).write(toFile: d + "/sensitivity_override.h", atomically: true, encoding: .utf8)
-    try! Contract.mappingHeader(profileCount: Contract.defaultProfileCount, names: names,
-                                mappings: Contract.defaultMappings).write(
-        toFile: d + "/mapping_override.h", atomically: true, encoding: .utf8)
-  }
-}''', encoding="utf-8")
+        (td / "main.swift").write_text(SWIFT_MAIN, encoding="utf-8")
         build = subprocess.run([swiftc, "-parse-as-library", "-O",
                                 str(HERE / "generated/Contract.swift"), str(td / "main.swift"),
-                                "-o", str(td / "g")], capture_output=True, text=True, encoding="utf-8", errors="replace")
+                                "-o", str(td / "g")],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace")
         if build.returncode != 0:
-            check("Contract.swift 컴파일", False, build.stderr.strip()[:200])
+            check("Contract.swift 컴파일", False, (build.stderr or "").strip()[:200])
         else:
-            subprocess.run([str(td / "g"), str(td)], check=True)
-            for f in C["headerFiles"]:
-                same = (td / f).read_text(encoding="utf-8") == \
-                       (HERE / "fixtures/golden" / f).read_text(encoding="utf-8")
+            golden = HERE / "fixtures/golden"
+            subprocess.run([str(td / "g"), str(td), str(golden / "preset.json")], check=True)
+            for f in C["headerFiles"] + ["preset.json"]:
+                same = ((td / f).read_text(encoding="utf-8")
+                        == (golden / f).read_text(encoding="utf-8"))
                 check(f"Swift {f} 가 골든과 동일", same)
+            check("Swift 프리셋으로 만든 헤더가 골든과 동일",
+                  (td / "from_preset_mapping.h").read_text(encoding="utf-8")
+                  == (golden / "mapping_override.h").read_text(encoding="utf-8"))
 
-print("4) Windows(C#) 구현 ↔ 골든 헤더")
+print("4) Windows(C#) 구현 ↔ 골든")
 if shutil.which("dotnet"):
     CS_MAIN = "\n".join([
         "class G {",
         "  static void Main(string[] a) {",
+        "    var enc = new System.Text.UTF8Encoding(false);",
         "    var sens = new Dictionary<string, double>();",
         "    foreach (var kv in Contract.Sensitivity) sens[kv.Key] = kv.Value.Default;",
         "    var names = Contract.Profiles.ToDictionary(p => p.Tag, p => p.DefaultName);",
         "    File.WriteAllText(Path.Combine(a[0], \"sensitivity_override.h\"),",
-        "        Contract.SensitivityHeader(sens), new System.Text.UTF8Encoding(false));",
+        "        Contract.SensitivityHeader(sens), enc);",
         "    File.WriteAllText(Path.Combine(a[0], \"mapping_override.h\"),",
-        "        Contract.MappingHeader(Contract.DefaultProfileCount, names, Contract.DefaultMappings),",
-        "        new System.Text.UTF8Encoding(false));",
+        "        Contract.MappingHeader(Contract.DefaultProfileCount, names, Contract.DefaultMappings), enc);",
+        "    // 골든 프리셋 왕복 — 읽고 다시 써서 byte 단위로 보존되는지",
+        "    var p = Contract.DecodePreset(File.ReadAllText(a[1]));",
+        "    File.WriteAllText(Path.Combine(a[0], \"preset.json\"), Contract.EncodePreset(p), enc);",
+        "    File.WriteAllText(Path.Combine(a[0], \"from_preset_mapping.h\"),",
+        "        Contract.MappingHeader(p.ProfileCount, p.ProfileNames, p.Mappings), enc);",
+        "    // 잘못된 파일은 이유를 붙여 거부해야 한다",
+        "    int rejected = 0;",
+        "    foreach (var bad in new[] { \"{\\\"schemaVersion\\\":99}\", \"not json\", \"{}\" }) {",
+        "      try { Contract.DecodePreset(bad); }",
+        "      catch (Contract.PresetException) { rejected++; }",
+        "    }",
+        "    File.WriteAllText(Path.Combine(a[0], \"rejected.txt\"), rejected.ToString(), enc);",
         "  }",
         "}",
     ])
     CS_PROJ = ('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
                '<OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>'
-               '<ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>'
+               '<ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable>'
                '</PropertyGroup><ItemGroup><Compile Include="{src}" /></ItemGroup></Project>')
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
         (td / "p.csproj").write_text(
             CS_PROJ.format(src=HERE / "generated/Contract.cs"), encoding="utf-8")
         (td / "Main.cs").write_text(CS_MAIN, encoding="utf-8")
-        r = subprocess.run(["dotnet", "run", "--project", str(td / "p.csproj"), "--", str(td)],
+        golden = HERE / "fixtures/golden"
+        r = subprocess.run(["dotnet", "run", "--project", str(td / "p.csproj"), "--",
+                            str(td), str(golden / "preset.json")],
                            capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:
-            check("Contract.cs 컴파일·실행", False, (r.stderr or r.stdout).strip()[:200])
+            check("Contract.cs 컴파일·실행", False, (r.stderr or r.stdout or "").strip()[:300])
         else:
-            for f in C["headerFiles"]:
+            for f in C["headerFiles"] + ["preset.json"]:
                 same = ((td / f).read_text(encoding="utf-8")
-                        == (HERE / "fixtures/golden" / f).read_text(encoding="utf-8"))
+                        == (golden / f).read_text(encoding="utf-8"))
                 check(f"C# {f} 가 골든과 동일", same)
+            check("C# 프리셋으로 만든 헤더가 골든과 동일",
+                  (td / "from_preset_mapping.h").read_text(encoding="utf-8")
+                  == (golden / "mapping_override.h").read_text(encoding="utf-8"))
+            check("C# 잘못된 프리셋 3종을 이유와 함께 거부",
+                  (td / "rejected.txt").read_text(encoding="utf-8").strip() == "3")
 else:
     skip("C# 출력 비교",
-         "dotnet 없음 — Windows 머신에서 build_windows.ps1 전에 이 스크립트를 돌릴 것")
+         "dotnet 없음 — CI(windows-latest) 가 대신 확인한다")
 
 print("5) 골든 헤더가 펌웨어에서 컴파일되는지")
 if not (FW / "build.sh").exists():

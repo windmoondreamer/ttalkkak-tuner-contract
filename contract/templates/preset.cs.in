@@ -1,0 +1,174 @@
+
+    // ================= 프리셋 파일 =================
+    // 두 OS 가 byte-for-byte 같은 JSON 을 내야 한다. 그래서 직렬화기를 쓰지 않고
+    // 계약이 정한 키 순서·자릿수로 직접 쓴다. (읽기만 System.Text.Json 을 쓴다.)
+
+    public sealed class Preset
+    {
+        public string Name = "이름 없음";
+        public int ProfileCount = DefaultProfileCount;
+        public Dictionary<string, double> Sensitivity = new();
+        public Dictionary<string, string> ProfileNames = new();
+        public Dictionary<string, string> Mappings = new();
+    }
+
+    public sealed class PresetException : System.Exception
+    {
+        public PresetException(string message) : base(message) { }
+    }
+
+    public static string NumberText(string key, double v)
+    {
+        var c = System.Globalization.CultureInfo.InvariantCulture;
+        int p = PresetPrecision[key];
+        if (p == 0) return ((int)System.Math.Round(v)).ToString(c);
+        return v.ToString("0." + new string('0', p), c);
+    }
+
+    private static string JsonString(string s)
+    {
+        var sb = new System.Text.StringBuilder("\"");
+        foreach (var ch in s)
+        {
+            switch (ch)
+            {
+                case '"': sb.Append("\\\""); break;
+                case '\\': sb.Append("\\\\"); break;
+                case '\n': sb.Append("\\n"); break;
+                case '\r': sb.Append("\\r"); break;
+                case '\t': sb.Append("\\t"); break;
+                default:
+                    if (ch < 0x20) sb.Append("\\u").Append(((int)ch).ToString("x4"));
+                    else sb.Append(ch);
+                    break;
+            }
+        }
+        return sb.Append('"').ToString();
+    }
+
+    /// 계약이 정한 순서로 직접 쓴다. 들여쓰기 2칸, 끝에 개행 하나.
+    public static string EncodePreset(Preset p)
+    {
+        var c = System.Globalization.CultureInfo.InvariantCulture;
+        var l = new List<string> { "{" };
+        l.Add("  \"schemaVersion\": " + SchemaVersion.ToString(c) + ",");
+        l.Add("  \"presetName\": " + JsonString(p.Name) + ",");
+        l.Add("  \"profileCount\": " + p.ProfileCount.ToString(c) + ",");
+
+        l.Add("  \"sensitivity\": {");
+        for (int i = 0; i < SensOrder.Length; i++)
+        {
+            var k = SensOrder[i];
+            var comma = i == SensOrder.Length - 1 ? "" : ",";
+            var v = p.Sensitivity.TryGetValue(k, out var d) ? d : 0;
+            l.Add("    " + JsonString(k) + ": " + NumberText(k, v) + comma);
+        }
+        l.Add("  },");
+
+        l.Add("  \"profileNames\": {");
+        for (int i = 0; i < Profiles.Count; i++)
+        {
+            var prof = Profiles[i];
+            var comma = i == Profiles.Count - 1 ? "" : ",";
+            var nm = p.ProfileNames.TryGetValue(prof.Tag, out var n) ? n : prof.DefaultName;
+            l.Add("    " + JsonString(prof.Tag) + ": " + JsonString(nm) + comma);
+        }
+        l.Add("  },");
+
+        l.Add("  \"mappings\": {");
+        for (int i = 0; i < Profiles.Count; i++)
+        {
+            var prof = Profiles[i];
+            l.Add("    " + JsonString(prof.Tag) + ": {");
+            for (int j = 0; j < EditableButtons.Length; j++)
+            {
+                var b = EditableButtons[j];
+                var comma = j == EditableButtons.Length - 1 ? "" : ",";
+                var key = prof.Tag + "_" + b;
+                var m = p.Mappings.TryGetValue(key, out var mm) ? mm : "NA";
+                l.Add("      " + JsonString(b) + ": " + JsonString(m) + comma);
+            }
+            l.Add("    }" + (i == Profiles.Count - 1 ? "" : ","));
+        }
+        l.Add("  }");
+        l.Add("}");
+        return string.Join("\n", l) + "\n";
+    }
+
+    /// 잘못된 파일은 **이유를 붙여서** 거부한다. 조용히 기본값으로 떨어지지 않는다.
+    public static Preset DecodePreset(string text)
+    {
+        System.Text.Json.JsonDocument doc;
+        try { doc = System.Text.Json.JsonDocument.Parse(text); }
+        catch (System.Exception e) { throw new PresetException("JSON 으로 읽을 수 없는 파일입니다: " + e.Message); }
+
+        using (doc)
+        {
+            var root = doc.RootElement;
+            if (root.ValueKind != System.Text.Json.JsonValueKind.Object)
+                throw new PresetException("JSON 최상위가 객체가 아닙니다.");
+
+            if (!root.TryGetProperty("schemaVersion", out var sv) || sv.GetInt32() != SchemaVersion)
+                throw new PresetException("스키마 버전이 다릅니다 (이 앱은 " + SchemaVersion + ").");
+
+            var p = new Preset();
+            if (root.TryGetProperty("presetName", out var pn) &&
+                pn.ValueKind == System.Text.Json.JsonValueKind.String)
+                p.Name = pn.GetString() ?? "이름 없음";
+
+            if (!root.TryGetProperty("profileCount", out var pc))
+                throw new PresetException("필수 항목이 없습니다: profileCount");
+            p.ProfileCount = pc.GetInt32();
+            if (p.ProfileCount < 1 || p.ProfileCount > MaxProfiles)
+                throw new PresetException("profileCount 는 1~" + MaxProfiles +
+                                          " 이어야 하는데 " + p.ProfileCount + " 입니다.");
+
+            if (!root.TryGetProperty("sensitivity", out var sens))
+                throw new PresetException("필수 항목이 없습니다: sensitivity");
+            foreach (var kv in Sensitivity)
+            {
+                if (!sens.TryGetProperty(kv.Key, out var el))
+                    throw new PresetException("필수 항목이 없습니다: sensitivity." + kv.Key);
+                double d = el.GetDouble();
+                if (d < kv.Value.Min || d > kv.Value.Max)
+                    throw new PresetException("sensitivity." + kv.Key + " 값이 " +
+                        kv.Value.Min + "~" + kv.Value.Max + " 범위를 벗어났습니다: " + d);
+                p.Sensitivity[kv.Key] = d;
+            }
+
+            root.TryGetProperty("profileNames", out var names);
+            foreach (var prof in Profiles)
+            {
+                p.ProfileNames[prof.Tag] =
+                    names.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                    names.TryGetProperty(prof.Tag, out var nv) &&
+                    nv.ValueKind == System.Text.Json.JsonValueKind.String
+                        ? (nv.GetString() ?? prof.DefaultName) : prof.DefaultName;
+            }
+
+            if (!root.TryGetProperty("mappings", out var maps))
+                throw new PresetException("필수 항목이 없습니다: mappings");
+            var known = new HashSet<string>();
+            foreach (var a in Actions) known.Add(a.Macro);
+            foreach (var prof in Profiles)
+            {
+                maps.TryGetProperty(prof.Tag, out var per);
+                foreach (var b in EditableButtons)
+                {
+                    var key = prof.Tag + "_" + b;
+                    if (per.ValueKind != System.Text.Json.JsonValueKind.Object ||
+                        !per.TryGetProperty(b, out var mv) ||
+                        mv.ValueKind != System.Text.Json.JsonValueKind.String)
+                    {
+                        p.Mappings[key] = DefaultMappings.TryGetValue(key, out var dm) ? dm : "NA";
+                        continue;   // 없는 칸은 기본값으로 채운다
+                    }
+                    var m = mv.GetString() ?? "NA";
+                    if (!known.Contains(m))
+                        throw new PresetException(key + " 에 이 펌웨어가 모르는 동작이 있습니다: " + m);
+                    p.Mappings[key] = m;
+                }
+            }
+            return p;
+        }
+    }

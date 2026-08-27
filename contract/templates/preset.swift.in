@@ -1,0 +1,145 @@
+
+    // ================= 프리셋 파일 =================
+    // 두 OS 가 byte-for-byte 같은 JSON 을 내야 한다. 그래서 표준 JSON 인코더를 쓰지 않고
+    // 계약이 정한 키 순서·자릿수로 직접 쓴다. (JSONEncoder 는 키 순서를 보장하지 않는다.)
+
+    struct Preset {
+        var name: String
+        var profileCount: Int
+        var sensitivity: [String: Double]
+        var profileNames: [String: String]
+        var mappings: [String: String]
+    }
+
+    enum PresetError: LocalizedError {
+        case notJSON
+        case wrongSchema(found: Any?)
+        case missing(String)
+        case badValue(String, String)
+        case unknownAction(String, String)
+
+        var errorDescription: String? {
+            switch self {
+            case .notJSON:
+                return "JSON 으로 읽을 수 없는 파일입니다."
+            case .wrongSchema(let f):
+                return "스키마 버전이 다릅니다 (이 앱은 \(Contract.schemaVersion), 파일은 \(f.map { "\($0)" } ?? "없음"))."
+            case .missing(let k):
+                return "필수 항목이 없습니다: \(k)"
+            case .badValue(let k, let why):
+                return "\(k) 값이 잘못됐습니다 — \(why)"
+            case .unknownAction(let k, let m):
+                return "\(k) 에 이 펌웨어가 모르는 동작이 있습니다: \(m)"
+            }
+        }
+    }
+
+    static func numberText(_ key: String, _ v: Double) -> String {
+        let p = presetPrecision[key] ?? 2
+        return p == 0 ? String(Int(v.rounded())) : String(format: "%.\(p)f", v)
+    }
+
+    private static func jsonString(_ s: String) -> String {
+        var out = "\""
+        for ch in s.unicodeScalars {
+            switch ch {
+            case "\"": out += "\\\""
+            case "\\": out += "\\\\"
+            case "\n": out += "\\n"
+            case "\r": out += "\\r"
+            case "\t": out += "\\t"
+            default:
+                if ch.value < 0x20 { out += String(format: "\\u%04x", ch.value) }
+                else { out.unicodeScalars.append(ch) }
+            }
+        }
+        return out + "\""
+    }
+
+    /// 계약이 정한 순서로 직접 쓴다. 들여쓰기 2칸, 끝에 개행 하나.
+    static func encodePreset(_ p: Preset) -> String {
+        var l: [String] = ["{"]
+        l.append("  \"schemaVersion\": \(schemaVersion),")
+        l.append("  \"presetName\": \(jsonString(p.name)),")
+        l.append("  \"profileCount\": \(p.profileCount),")
+
+        l.append("  \"sensitivity\": {")
+        let sensKeys = presetPrecision.keys.sorted { sensOrder.firstIndex(of: $0)! < sensOrder.firstIndex(of: $1)! }
+        for (i, k) in sensKeys.enumerated() {
+            let comma = i == sensKeys.count - 1 ? "" : ","
+            l.append("    \(jsonString(k)): \(numberText(k, p.sensitivity[k] ?? 0))\(comma)")
+        }
+        l.append("  },")
+
+        l.append("  \"profileNames\": {")
+        for (i, prof) in profiles.enumerated() {
+            let comma = i == profiles.count - 1 ? "" : ","
+            let name = p.profileNames[prof.tag] ?? prof.defaultName
+            l.append("    \(jsonString(prof.tag)): \(jsonString(name))\(comma)")
+        }
+        l.append("  },")
+
+        l.append("  \"mappings\": {")
+        for (i, prof) in profiles.enumerated() {
+            l.append("    \(jsonString(prof.tag)): {")
+            for (j, b) in editableButtons.enumerated() {
+                let comma = j == editableButtons.count - 1 ? "" : ","
+                let m = p.mappings["\(prof.tag)_\(b)"] ?? "NA"
+                l.append("      \(jsonString(b)): \(jsonString(m))\(comma)")
+            }
+            l.append("    }" + (i == profiles.count - 1 ? "" : ","))
+        }
+        l.append("  }")
+        l.append("}")
+        return l.joined(separator: "\n") + "\n"
+    }
+
+    /// 잘못된 파일은 **이유를 붙여서** 거부한다. 조용히 기본값으로 떨어지지 않는다.
+    static func decodePreset(_ text: String) throws -> Preset {
+        guard let data = text.data(using: .utf8),
+              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { throw PresetError.notJSON }
+
+        guard let v = root["schemaVersion"] as? Int, v == schemaVersion else {
+            throw PresetError.wrongSchema(found: root["schemaVersion"])
+        }
+        let name = root["presetName"] as? String ?? "이름 없음"
+
+        guard let rawCount = root["profileCount"] as? Int else { throw PresetError.missing("profileCount") }
+        guard rawCount >= 1 && rawCount <= maxProfiles else {
+            throw PresetError.badValue("profileCount", "1~\(maxProfiles) 이어야 하는데 \(rawCount) 입니다")
+        }
+
+        guard let sensRaw = root["sensitivity"] as? [String: Any] else { throw PresetError.missing("sensitivity") }
+        var sens: [String: Double] = [:]
+        for (k, spec) in sensitivity {
+            guard let n = sensRaw[k] as? NSNumber else { throw PresetError.missing("sensitivity.\(k)") }
+            let d = n.doubleValue
+            guard d >= spec.min && d <= spec.max else {
+                throw PresetError.badValue("sensitivity.\(k)", "\(spec.min)~\(spec.max) 범위를 벗어난 \(d)")
+            }
+            sens[k] = d
+        }
+
+        let namesRaw = root["profileNames"] as? [String: Any] ?? [:]
+        var names: [String: String] = [:]
+        for prof in profiles { names[prof.tag] = (namesRaw[prof.tag] as? String) ?? prof.defaultName }
+
+        guard let mapRaw = root["mappings"] as? [String: Any] else { throw PresetError.missing("mappings") }
+        let known = Set(actions.map(\.macro))
+        var maps: [String: String] = [:]
+        for prof in profiles {
+            let per = mapRaw[prof.tag] as? [String: Any] ?? [:]
+            for b in editableButtons {
+                let key = "\(prof.tag)_\(b)"
+                guard let m = per[b] as? String else {
+                    maps[key] = defaultMappings[key] ?? "NA"      // 없는 칸은 기본값으로 채운다
+                    continue
+                }
+                guard known.contains(m) else { throw PresetError.unknownAction(key, m) }
+                maps[key] = m
+            }
+        }
+        return Preset(name: name, profileCount: rawCount,
+                      sensitivity: sens, profileNames: names, mappings: maps)
+    }

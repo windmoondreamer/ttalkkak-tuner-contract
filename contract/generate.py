@@ -78,6 +78,17 @@ def gen_swift() -> str:
                    f"step: {v['step']}, def: {v['default']}),")
     out.append("    ]\n")
 
+    # 프리셋 파일 규격 — 키 순서·자릿수를 계약이 못박는다.
+    P = C["preset"]
+    out.append(f"    static let fileSchemaVersion = {P['fileSchemaVersion']}")
+    out.append("    static let sensOrder = [" +
+               ", ".join(swift_str(k) for k in P["precision"]) + "]")
+    out.append("    static let presetPrecision: [String: Int] = [")
+    for k, v in P["precision"].items():
+        out.append(f"        {swift_str(k)}: {v},")
+    out.append("    ]")
+    out.append((HERE / "templates/preset.swift.in").read_text(encoding="utf-8"))
+
     # 헤더 생성기도 계약에서 만든다. 앱마다 손으로 쓰면 반드시 어긋난다.
     out.append('''    /// 감도 헤더. 골든 fixture 와 byte-for-byte 같아야 한다.
     static func sensitivityHeader(_ s: [String: Double]) -> String {
@@ -181,6 +192,18 @@ def gen_cs() -> str:
         out.append(f"        [{cs_str(k)}] = new({v['min']}, {v['max']}, {v['step']}, {v['default']}),")
     out.append("    };\n")
 
+    # 프리셋 파일 규격 — Swift 와 같은 키 순서·자릿수를 쓴다.
+    P = C["preset"]
+    out.append(f"    public const int FileSchemaVersion = {P['fileSchemaVersion']};")
+    out.append("    public static readonly string[] SensOrder = { " +
+               ", ".join(cs_str(k) for k in P["precision"]) + " };")
+    out.append("    public static readonly Dictionary<string, int> PresetPrecision = new()")
+    out.append("    {")
+    for k, v in P["precision"].items():
+        out.append(f"        [{cs_str(k)}] = {v},")
+    out.append("    };")
+    out.append((HERE / "templates/preset.cs.in").read_text(encoding="utf-8"))
+
     # 헤더 생성기 — Swift 쪽과 반드시 같은 문자열을 내야 한다.
     # 문화권에 따라 소수점이 ',' 가 되면 헤더가 깨지므로 InvariantCulture 를 강제한다.
     out.append('''    /// 감도 헤더. 골든 fixture 와 byte-for-byte 같아야 한다.
@@ -276,6 +299,38 @@ def mapping_header(profile_count: int, names: dict, mappings: dict) -> str:
     return "\n".join(out)
 
 
+def encode_preset(name: str, count: int, sens: dict, names: dict, maps: dict) -> str:
+    """계약이 정한 키 순서·자릿수로 프리셋 JSON 을 쓴다.
+    표준 인코더는 키 순서를 보장하지 않아서 직접 쓴다 — 두 OS 의 출력이 byte 단위로 같아야 한다."""
+    P = C["preset"]
+
+    def num(k, v):
+        p = P["precision"][k]
+        return str(int(round(v))) if p == 0 else f"{v:.{p}f}"
+
+    def js(x):
+        return json.dumps(x, ensure_ascii=False)
+
+    l = ["{", f'  "schemaVersion": {C["schemaVersion"]},',
+         f'  "presetName": {js(name)},', f'  "profileCount": {count},', '  "sensitivity": {']
+    keys = list(P["precision"])
+    for i, k in enumerate(keys):
+        l.append(f'    {js(k)}: {num(k, sens[k])}' + ("" if i == len(keys) - 1 else ","))
+    l += ["  },", '  "profileNames": {']
+    for i, prof in enumerate(C["profiles"]):
+        nm = names.get(prof["tag"], prof["defaultName"])
+        l.append(f'    {js(prof["tag"])}: {js(nm)}' + ("" if i == len(C["profiles"]) - 1 else ","))
+    l += ["  },", '  "mappings": {']
+    for i, prof in enumerate(C["profiles"]):
+        l.append(f'    {js(prof["tag"])}: {{')
+        for j, b in enumerate(C["editableButtons"]):
+            m = maps[f'{prof["tag"]}_{b}']
+            l.append(f'      {js(b)}: {js(m)}' + ("" if j == len(C["editableButtons"]) - 1 else ","))
+        l.append("    }" + ("" if i == len(C["profiles"]) - 1 else ","))
+    l += ["  }", "}"]
+    return "\n".join(l) + "\n"
+
+
 def gen_golden() -> dict:
     sens = {k: v["default"] for k, v in C["sensitivity"].items()}
     names = {p["tag"]: p["defaultName"] for p in C["profiles"]}
@@ -284,6 +339,7 @@ def gen_golden() -> dict:
     return {
         "sensitivity_override.h": sensitivity_header(sens),
         "mapping_override.h": mapping_header(C["defaultProfileCount"], names, maps),
+        "preset.json": encode_preset("기본 설정", C["defaultProfileCount"], sens, names, maps),
     }
 
 

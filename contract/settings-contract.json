@@ -677,5 +677,30 @@
   "headerFiles": [
     "sensitivity_override.h",
     "mapping_override.h"
-  ]
+  ],
+  "preset": {
+    "fileSchemaVersion": 1,
+    "_note": "키 순서·자릿수를 여기서 고정한다. 두 OS 의 출력이 byte-for-byte 같아야 한다.",
+    "keyOrder": [
+      "schemaVersion",
+      "presetName",
+      "profileCount",
+      "sensitivity",
+      "profileNames",
+      "mappings"
+    ],
+    "indent": 2,
+    "precision": {
+      "gdz": 2,
+      "tdz": 2,
+      "gsat": 2,
+      "tsat": 2,
+      "fps": 1,
+      "moba": 1,
+      "desk": 1,
+      "gamma": 1,
+      "wasd": 2,
+      "debounce": 0
+    }
+  }
 }
