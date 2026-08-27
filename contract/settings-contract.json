@@ -1,0 +1,681 @@
+{
+  "schemaVersion": 2,
+  "device": "Ttalkkak",
+  "_note": "이 파일이 단일 진실이다. 앱 소스를 직접 고치지 말고 generate.py 를 돌릴 것.",
+  "firmwareRef": "02_설계/툴/firmware/ttalkkak/modes.h · config.h",
+  "maxProfiles": 9,
+  "defaultProfileCount": 4,
+  "profiles": [
+    {
+      "tag": "FPS",
+      "defaultName": "FPS",
+      "builtin": true,
+      "defaultMapping": {
+        "F1": "K(HID_KEY_Q)",
+        "F2": "K(HID_KEY_E)",
+        "F3": "K(HID_KEY_C)",
+        "F4": "MBR(MOUSE_BUTTON_LEFT)",
+        "F5": "MODONLY(KEYBOARD_MODIFIER_LEFTSHIFT)",
+        "F6": "K(HID_KEY_SPACE)",
+        "F7": "MODONLY(KEYBOARD_MODIFIER_LEFTCTRL)",
+        "F8": "MB(MOUSE_BUTTON_RIGHT)",
+        "M1": "K(HID_KEY_X)",
+        "M2": "K(HID_KEY_R)",
+        "U1": "K(HID_KEY_TAB)",
+        "U2": "K(HID_KEY_B)",
+        "U3": "K(HID_KEY_ESCAPE)",
+        "U4": "K(HID_KEY_ENTER)"
+      }
+    },
+    {
+      "tag": "MOBA",
+      "defaultName": "MOBA",
+      "builtin": true,
+      "defaultMapping": {
+        "F1": "K(HID_KEY_Q)",
+        "F2": "K(HID_KEY_W)",
+        "F3": "K(HID_KEY_E)",
+        "F4": "MBR(MOUSE_BUTTON_RIGHT)",
+        "F5": "K(HID_KEY_R)",
+        "F6": "K(HID_KEY_D)",
+        "F7": "K(HID_KEY_F)",
+        "F8": "MB(MOUSE_BUTTON_LEFT)",
+        "M1": "MB(MOUSE_BUTTON_LEFT)",
+        "M2": "K(HID_KEY_A)",
+        "U1": "K(HID_KEY_TAB)",
+        "U2": "K(HID_KEY_P)",
+        "U3": "K(HID_KEY_B)",
+        "U4": "K(HID_KEY_ESCAPE)"
+      }
+    },
+    {
+      "tag": "DESK",
+      "defaultName": "DESK",
+      "builtin": true,
+      "defaultMapping": {
+        "F1": "KM(HID_KEY_ARROW_LEFT, NAV_MOD)",
+        "F2": "KM(HID_KEY_ARROW_RIGHT, NAV_MOD)",
+        "F3": "K(HID_KEY_F5)",
+        "F4": "MB(MOUSE_BUTTON_LEFT)",
+        "F5": "KM(HID_KEY_TAB, PRIMARY_MOD | KEYBOARD_MODIFIER_LEFTSHIFT)",
+        "F6": "KM(HID_KEY_TAB, PRIMARY_MOD)",
+        "F7": "KM(HID_KEY_W, PRIMARY_MOD)",
+        "F8": "MB(MOUSE_BUTTON_RIGHT)",
+        "M1": "MB(MOUSE_BUTTON_LEFT)",
+        "M2": "MB(MOUSE_BUTTON_RIGHT)",
+        "U1": "K(HID_KEY_ESCAPE)",
+        "U2": "K(HID_KEY_ENTER)",
+        "U3": "K(HID_KEY_TAB)",
+        "U4": "KM(HID_KEY_T, PRIMARY_MOD)"
+      }
+    },
+    {
+      "tag": "MEDIA",
+      "defaultName": "MEDIA",
+      "builtin": true,
+      "defaultMapping": {
+        "F1": "KM(HID_KEY_ARROW_LEFT, NAV_MOD)",
+        "F2": "KM(HID_KEY_ARROW_RIGHT, NAV_MOD)",
+        "F3": "KM(HID_KEY_L, PRIMARY_MOD)",
+        "F4": "MB(MOUSE_BUTTON_LEFT)",
+        "F5": "K(HID_KEY_SLASH)",
+        "F6": "K(HID_KEY_TAB)",
+        "F7": "K(HID_KEY_K)",
+        "F8": "MB(MOUSE_BUTTON_RIGHT)",
+        "M1": "MB(MOUSE_BUTTON_LEFT)",
+        "M2": "K(HID_KEY_F)",
+        "U1": "K(HID_KEY_J)",
+        "U2": "K(HID_KEY_K)",
+        "U3": "K(HID_KEY_L)",
+        "U4": "K(HID_KEY_ESCAPE)"
+      }
+    },
+    {
+      "tag": "P5",
+      "defaultName": "사용자1",
+      "builtin": false,
+      "defaultMapping": {
+        "F1": "KM(HID_KEY_ARROW_LEFT, NAV_MOD)",
+        "F2": "KM(HID_KEY_ARROW_RIGHT, NAV_MOD)",
+        "F3": "K(HID_KEY_F5)",
+        "F4": "MB(MOUSE_BUTTON_LEFT)",
+        "F5": "KM(HID_KEY_TAB, PRIMARY_MOD | KEYBOARD_MODIFIER_LEFTSHIFT)",
+        "F6": "KM(HID_KEY_TAB, PRIMARY_MOD)",
+        "F7": "KM(HID_KEY_W, PRIMARY_MOD)",
+        "F8": "MB(MOUSE_BUTTON_RIGHT)",
+        "M1": "MB(MOUSE_BUTTON_LEFT)",
+        "M2": "MB(MOUSE_BUTTON_RIGHT)",
+        "U1": "K(HID_KEY_ESCAPE)",
+        "U2": "K(HID_KEY_ENTER)",
+        "U3": "K(HID_KEY_TAB)",
+        "U4": "KM(HID_KEY_T, PRIMARY_MOD)"
+      }
+    },
+    {
+      "tag": "P6",
+      "defaultName": "사용자2",
+      "builtin": false,
+      "defaultMapping": {
+        "F1": "KM(HID_KEY_ARROW_LEFT, NAV_MOD)",
+        "F2": "KM(HID_KEY_ARROW_RIGHT, NAV_MOD)",
+        "F3": "K(HID_KEY_F5)",
+        "F4": "MB(MOUSE_BUTTON_LEFT)",
+        "F5": "KM(HID_KEY_TAB, PRIMARY_MOD | KEYBOARD_MODIFIER_LEFTSHIFT)",
+        "F6": "KM(HID_KEY_TAB, PRIMARY_MOD)",
+        "F7": "KM(HID_KEY_W, PRIMARY_MOD)",
+        "F8": "MB(MOUSE_BUTTON_RIGHT)",
+        "M1": "MB(MOUSE_BUTTON_LEFT)",
+        "M2": "MB(MOUSE_BUTTON_RIGHT)",
+        "U1": "K(HID_KEY_ESCAPE)",
+        "U2": "K(HID_KEY_ENTER)",
+        "U3": "K(HID_KEY_TAB)",
+        "U4": "KM(HID_KEY_T, PRIMARY_MOD)"
+      }
+    },
+    {
+      "tag": "P7",
+      "defaultName": "사용자3",
+      "builtin": false,
+      "defaultMapping": {
+        "F1": "KM(HID_KEY_ARROW_LEFT, NAV_MOD)",
+        "F2": "KM(HID_KEY_ARROW_RIGHT, NAV_MOD)",
+        "F3": "K(HID_KEY_F5)",
+        "F4": "MB(MOUSE_BUTTON_LEFT)",
+        "F5": "KM(HID_KEY_TAB, PRIMARY_MOD | KEYBOARD_MODIFIER_LEFTSHIFT)",
+        "F6": "KM(HID_KEY_TAB, PRIMARY_MOD)",
+        "F7": "KM(HID_KEY_W, PRIMARY_MOD)",
+        "F8": "MB(MOUSE_BUTTON_RIGHT)",
+        "M1": "MB(MOUSE_BUTTON_LEFT)",
+        "M2": "MB(MOUSE_BUTTON_RIGHT)",
+        "U1": "K(HID_KEY_ESCAPE)",
+        "U2": "K(HID_KEY_ENTER)",
+        "U3": "K(HID_KEY_TAB)",
+        "U4": "KM(HID_KEY_T, PRIMARY_MOD)"
+      }
+    },
+    {
+      "tag": "P8",
+      "defaultName": "사용자4",
+      "builtin": false,
+      "defaultMapping": {
+        "F1": "KM(HID_KEY_ARROW_LEFT, NAV_MOD)",
+        "F2": "KM(HID_KEY_ARROW_RIGHT, NAV_MOD)",
+        "F3": "K(HID_KEY_F5)",
+        "F4": "MB(MOUSE_BUTTON_LEFT)",
+        "F5": "KM(HID_KEY_TAB, PRIMARY_MOD | KEYBOARD_MODIFIER_LEFTSHIFT)",
+        "F6": "KM(HID_KEY_TAB, PRIMARY_MOD)",
+        "F7": "KM(HID_KEY_W, PRIMARY_MOD)",
+        "F8": "MB(MOUSE_BUTTON_RIGHT)",
+        "M1": "MB(MOUSE_BUTTON_LEFT)",
+        "M2": "MB(MOUSE_BUTTON_RIGHT)",
+        "U1": "K(HID_KEY_ESCAPE)",
+        "U2": "K(HID_KEY_ENTER)",
+        "U3": "K(HID_KEY_TAB)",
+        "U4": "KM(HID_KEY_T, PRIMARY_MOD)"
+      }
+    },
+    {
+      "tag": "P9",
+      "defaultName": "사용자5",
+      "builtin": false,
+      "defaultMapping": {
+        "F1": "KM(HID_KEY_ARROW_LEFT, NAV_MOD)",
+        "F2": "KM(HID_KEY_ARROW_RIGHT, NAV_MOD)",
+        "F3": "K(HID_KEY_F5)",
+        "F4": "MB(MOUSE_BUTTON_LEFT)",
+        "F5": "KM(HID_KEY_TAB, PRIMARY_MOD | KEYBOARD_MODIFIER_LEFTSHIFT)",
+        "F6": "KM(HID_KEY_TAB, PRIMARY_MOD)",
+        "F7": "KM(HID_KEY_W, PRIMARY_MOD)",
+        "F8": "MB(MOUSE_BUTTON_RIGHT)",
+        "M1": "MB(MOUSE_BUTTON_LEFT)",
+        "M2": "MB(MOUSE_BUTTON_RIGHT)",
+        "U1": "K(HID_KEY_ESCAPE)",
+        "U2": "K(HID_KEY_ENTER)",
+        "U3": "K(HID_KEY_TAB)",
+        "U4": "KM(HID_KEY_T, PRIMARY_MOD)"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "id": "F1",
+      "subtitle": "검지 좌",
+      "group": "finger",
+      "bit": 0,
+      "slot": "P00"
+    },
+    {
+      "id": "F2",
+      "subtitle": "검지 중",
+      "group": "finger",
+      "bit": 1,
+      "slot": "P01"
+    },
+    {
+      "id": "F3",
+      "subtitle": "검지 우",
+      "group": "finger",
+      "bit": 2,
+      "slot": "P02"
+    },
+    {
+      "id": "F4",
+      "subtitle": "검지 방아쇠",
+      "group": "finger",
+      "bit": 3,
+      "slot": "P03"
+    },
+    {
+      "id": "F5",
+      "subtitle": "중지 좌",
+      "group": "finger",
+      "bit": 4,
+      "slot": "P04"
+    },
+    {
+      "id": "F6",
+      "subtitle": "중지 중",
+      "group": "finger",
+      "bit": 5,
+      "slot": "P05"
+    },
+    {
+      "id": "F7",
+      "subtitle": "중지 우",
+      "group": "finger",
+      "bit": 6,
+      "slot": "P06"
+    },
+    {
+      "id": "F8",
+      "subtitle": "중지 방아쇠",
+      "group": "finger",
+      "bit": 7,
+      "slot": "P07"
+    },
+    {
+      "id": "M1",
+      "subtitle": "크라운 1",
+      "group": "thumb",
+      "bit": 8,
+      "slot": "P10"
+    },
+    {
+      "id": "M2",
+      "subtitle": "크라운 2",
+      "group": "thumb",
+      "bit": 9,
+      "slot": "P11"
+    },
+    {
+      "id": "U1",
+      "subtitle": "베이스 Y",
+      "group": "finger",
+      "bit": 10,
+      "slot": "P12"
+    },
+    {
+      "id": "U2",
+      "subtitle": "베이스 X",
+      "group": "finger",
+      "bit": 11,
+      "slot": "P13"
+    },
+    {
+      "id": "U3",
+      "subtitle": "베이스 B",
+      "group": "finger",
+      "bit": 12,
+      "slot": "P14"
+    },
+    {
+      "id": "U4",
+      "subtitle": "베이스 A",
+      "group": "finger",
+      "bit": 13,
+      "slot": "P15"
+    },
+    {
+      "id": "SP",
+      "subtitle": "스틱 클릭",
+      "group": "thumb",
+      "bit": 14,
+      "slot": "GP2"
+    },
+    {
+      "id": "MD",
+      "subtitle": "MODE 링",
+      "group": "thumb",
+      "bit": 15,
+      "slot": "P17"
+    }
+  ],
+  "editableButtons": [
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "M1",
+    "M2",
+    "U1",
+    "U2",
+    "U3",
+    "U4"
+  ],
+  "protectedButtons": {
+    "SP": "스틱 클릭 — 모드별 특수 기능(레벨업·가운데 클릭)",
+    "MD": "MODE 링 — 모드 전환·재캘리브레이션·USB 전환"
+  },
+  "sensitivity": {
+    "gdz": {
+      "min": 0.0,
+      "max": 0.4,
+      "step": 0.01,
+      "default": 0.1
+    },
+    "tdz": {
+      "min": 0.0,
+      "max": 0.4,
+      "step": 0.01,
+      "default": 0.14
+    },
+    "gsat": {
+      "min": 0.55,
+      "max": 1.0,
+      "step": 0.01,
+      "default": 0.85
+    },
+    "tsat": {
+      "min": 0.55,
+      "max": 1.0,
+      "step": 0.01,
+      "default": 0.9
+    },
+    "fps": {
+      "min": 4,
+      "max": 45,
+      "step": 1,
+      "default": 22
+    },
+    "moba": {
+      "min": 4,
+      "max": 45,
+      "step": 1,
+      "default": 16
+    },
+    "desk": {
+      "min": 4,
+      "max": 45,
+      "step": 1,
+      "default": 14
+    },
+    "gamma": {
+      "min": 1.0,
+      "max": 3.0,
+      "step": 0.1,
+      "default": 1.8
+    },
+    "wasd": {
+      "min": 0.15,
+      "max": 0.75,
+      "step": 0.01,
+      "default": 0.38
+    },
+    "debounce": {
+      "min": 2,
+      "max": 25,
+      "step": 1,
+      "default": 12
+    }
+  },
+  "actions": [
+    {
+      "label": "사용 안 함",
+      "macro": "NA"
+    },
+    {
+      "label": "마우스 왼쪽 클릭",
+      "macro": "MB(MOUSE_BUTTON_LEFT)"
+    },
+    {
+      "label": "마우스 오른쪽 클릭",
+      "macro": "MB(MOUSE_BUTTON_RIGHT)"
+    },
+    {
+      "label": "마우스 가운데 클릭",
+      "macro": "MB(MOUSE_BUTTON_MIDDLE)"
+    },
+    {
+      "label": "마우스 왼쪽 연사",
+      "macro": "MBR(MOUSE_BUTTON_LEFT)"
+    },
+    {
+      "label": "마우스 오른쪽 연사",
+      "macro": "MBR(MOUSE_BUTTON_RIGHT)"
+    },
+    {
+      "label": "Shift (누르는 동안)",
+      "macro": "MODONLY(KEYBOARD_MODIFIER_LEFTSHIFT)"
+    },
+    {
+      "label": "Ctrl (누르는 동안)",
+      "macro": "MODONLY(KEYBOARD_MODIFIER_LEFTCTRL)"
+    },
+    {
+      "label": "Shift 토글 (다시 누르면 해제)",
+      "macro": "MODT(KEYBOARD_MODIFIER_LEFTSHIFT)"
+    },
+    {
+      "label": "Ctrl 토글 (다시 누르면 해제)",
+      "macro": "MODT(KEYBOARD_MODIFIER_LEFTCTRL)"
+    },
+    {
+      "label": "브라우저 뒤로",
+      "macro": "KM(HID_KEY_ARROW_LEFT, NAV_MOD)"
+    },
+    {
+      "label": "브라우저 앞으로",
+      "macro": "KM(HID_KEY_ARROW_RIGHT, NAV_MOD)"
+    },
+    {
+      "label": "이전 탭",
+      "macro": "KM(HID_KEY_TAB, PRIMARY_MOD | KEYBOARD_MODIFIER_LEFTSHIFT)"
+    },
+    {
+      "label": "다음 탭",
+      "macro": "KM(HID_KEY_TAB, PRIMARY_MOD)"
+    },
+    {
+      "label": "탭 닫기",
+      "macro": "KM(HID_KEY_W, PRIMARY_MOD)"
+    },
+    {
+      "label": "새 탭",
+      "macro": "KM(HID_KEY_T, PRIMARY_MOD)"
+    },
+    {
+      "label": "주소창 검색",
+      "macro": "KM(HID_KEY_L, PRIMARY_MOD)"
+    },
+    {
+      "label": "YouTube 검색 (/)",
+      "macro": "K(HID_KEY_SLASH)"
+    },
+    {
+      "label": "키 A",
+      "macro": "K(HID_KEY_A)"
+    },
+    {
+      "label": "키 B",
+      "macro": "K(HID_KEY_B)"
+    },
+    {
+      "label": "키 C",
+      "macro": "K(HID_KEY_C)"
+    },
+    {
+      "label": "키 D",
+      "macro": "K(HID_KEY_D)"
+    },
+    {
+      "label": "키 E",
+      "macro": "K(HID_KEY_E)"
+    },
+    {
+      "label": "키 F",
+      "macro": "K(HID_KEY_F)"
+    },
+    {
+      "label": "키 G",
+      "macro": "K(HID_KEY_G)"
+    },
+    {
+      "label": "키 H",
+      "macro": "K(HID_KEY_H)"
+    },
+    {
+      "label": "키 I",
+      "macro": "K(HID_KEY_I)"
+    },
+    {
+      "label": "키 J",
+      "macro": "K(HID_KEY_J)"
+    },
+    {
+      "label": "키 K",
+      "macro": "K(HID_KEY_K)"
+    },
+    {
+      "label": "키 L",
+      "macro": "K(HID_KEY_L)"
+    },
+    {
+      "label": "키 M",
+      "macro": "K(HID_KEY_M)"
+    },
+    {
+      "label": "키 N",
+      "macro": "K(HID_KEY_N)"
+    },
+    {
+      "label": "키 O",
+      "macro": "K(HID_KEY_O)"
+    },
+    {
+      "label": "키 P",
+      "macro": "K(HID_KEY_P)"
+    },
+    {
+      "label": "키 Q",
+      "macro": "K(HID_KEY_Q)"
+    },
+    {
+      "label": "키 R",
+      "macro": "K(HID_KEY_R)"
+    },
+    {
+      "label": "키 S",
+      "macro": "K(HID_KEY_S)"
+    },
+    {
+      "label": "키 T",
+      "macro": "K(HID_KEY_T)"
+    },
+    {
+      "label": "키 U",
+      "macro": "K(HID_KEY_U)"
+    },
+    {
+      "label": "키 V",
+      "macro": "K(HID_KEY_V)"
+    },
+    {
+      "label": "키 W",
+      "macro": "K(HID_KEY_W)"
+    },
+    {
+      "label": "키 X",
+      "macro": "K(HID_KEY_X)"
+    },
+    {
+      "label": "키 Y",
+      "macro": "K(HID_KEY_Y)"
+    },
+    {
+      "label": "키 Z",
+      "macro": "K(HID_KEY_Z)"
+    },
+    {
+      "label": "키 0",
+      "macro": "K(HID_KEY_0)"
+    },
+    {
+      "label": "키 1",
+      "macro": "K(HID_KEY_1)"
+    },
+    {
+      "label": "키 2",
+      "macro": "K(HID_KEY_2)"
+    },
+    {
+      "label": "키 3",
+      "macro": "K(HID_KEY_3)"
+    },
+    {
+      "label": "키 4",
+      "macro": "K(HID_KEY_4)"
+    },
+    {
+      "label": "키 5",
+      "macro": "K(HID_KEY_5)"
+    },
+    {
+      "label": "키 6",
+      "macro": "K(HID_KEY_6)"
+    },
+    {
+      "label": "키 7",
+      "macro": "K(HID_KEY_7)"
+    },
+    {
+      "label": "키 8",
+      "macro": "K(HID_KEY_8)"
+    },
+    {
+      "label": "키 9",
+      "macro": "K(HID_KEY_9)"
+    },
+    {
+      "label": "Space",
+      "macro": "K(HID_KEY_SPACE)"
+    },
+    {
+      "label": "Tab",
+      "macro": "K(HID_KEY_TAB)"
+    },
+    {
+      "label": "Enter",
+      "macro": "K(HID_KEY_ENTER)"
+    },
+    {
+      "label": "Esc",
+      "macro": "K(HID_KEY_ESCAPE)"
+    },
+    {
+      "label": "← 왼쪽",
+      "macro": "K(HID_KEY_ARROW_LEFT)"
+    },
+    {
+      "label": "→ 오른쪽",
+      "macro": "K(HID_KEY_ARROW_RIGHT)"
+    },
+    {
+      "label": "↑ 위",
+      "macro": "K(HID_KEY_ARROW_UP)"
+    },
+    {
+      "label": "↓ 아래",
+      "macro": "K(HID_KEY_ARROW_DOWN)"
+    },
+    {
+      "label": "F1",
+      "macro": "K(HID_KEY_F1)"
+    },
+    {
+      "label": "F2",
+      "macro": "K(HID_KEY_F2)"
+    },
+    {
+      "label": "F3",
+      "macro": "K(HID_KEY_F3)"
+    },
+    {
+      "label": "F4",
+      "macro": "K(HID_KEY_F4)"
+    },
+    {
+      "label": "F5 (새로 고침)",
+      "macro": "K(HID_KEY_F5)"
+    },
+    {
+      "label": "F6",
+      "macro": "K(HID_KEY_F6)"
+    },
+    {
+      "label": "F7",
+      "macro": "K(HID_KEY_F7)"
+    },
+    {
+      "label": "F8",
+      "macro": "K(HID_KEY_F8)"
+    }
+  ],
+  "headerFiles": [
+    "sensitivity_override.h",
+    "mapping_override.h"
+  ]
+}

@@ -1,0 +1,37 @@
+name: 계약 검증
+
+# 핵심 목적: macOS 개발 머신에는 dotnet 이 없어서 C# 출력 동등성을 확인할 수 없다.
+# Windows 러너가 그 한 칸을 대신 채운다. 두 OS 에서 같은 골든 헤더가 나오는지 본다.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows — C# 출력이 골든과 같은가
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 계약 검증
+        run: python contract/verify_fixture.py
+      - name: Windows 앱 빌드
+        run: dotnet build windows/TtalkkakTuner.Windows.csproj -c Release
+
+  macos:
+    name: macOS — Swift 출력이 골든과 같은가
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 계약 검증
+        run: python3 contract/verify_fixture.py
