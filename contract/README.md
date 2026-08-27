@@ -39,9 +39,10 @@ python3 contract/verify_fixture.py    # 전체 검증
 | 4 | **C# 구현이 골든과 byte-for-byte 같은지** (dotnet 필요) |
 | 5 | 골든 헤더가 펌웨어에서 실제로 컴파일되는지 (arduino-cli) |
 
-> ⚠ **4번은 macOS 개발 머신에 dotnet 이 없어 아직 미검증이다.**
-> Windows 에서 `python3 contract/verify_fixture.py` 를 한 번 돌려야 OS 동등성이 증명된다.
-> 그 전까지 "두 OS 가 같은 헤더를 낸다" 는 **설계상 그렇게 만들었을 뿐 확인된 사실이 아니다.**
+> ✅ **2026-08-27 확인 완료.** GitHub Actions 의 `windows-latest` 러너에서 C# 출력이
+> 골든과 byte-for-byte 같음을 확인했고, `macos-latest` 에서 Swift 도 같음을 확인했다.
+> **두 OS 가 같은 헤더를 낸다는 것이 이제 측정된 사실이다.**
+> 저장소: `windmoondreamer/ttalkkak-tuner-contract` (비공개)
 
 ## 계약이 잡아낸 것
 
