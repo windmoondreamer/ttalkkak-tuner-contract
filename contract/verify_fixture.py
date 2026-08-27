@@ -70,7 +70,7 @@ check("감도 기본값이 전부 범위 안", not any(f.startswith("감도 기�
 
 print("2) 생성물 최신 여부")
 r = subprocess.run([sys.executable, str(HERE / "generate.py"), "--check"],
-                   capture_output=True, text=True)
+                   capture_output=True, text=True, encoding="utf-8", errors="replace")
 check("generated/ 와 골든이 계약과 최신", r.returncode == 0, r.stdout.strip())
 
 print("3) macOS(Swift) 구현 ↔ 골든 헤더")
@@ -94,7 +94,7 @@ else:
 }''', encoding="utf-8")
         build = subprocess.run([swiftc, "-parse-as-library", "-O",
                                 str(HERE / "generated/Contract.swift"), str(td / "main.swift"),
-                                "-o", str(td / "g")], capture_output=True, text=True)
+                                "-o", str(td / "g")], capture_output=True, text=True, encoding="utf-8", errors="replace")
         if build.returncode != 0:
             check("Contract.swift 컴파일", False, build.stderr.strip()[:200])
         else:
@@ -130,7 +130,7 @@ if shutil.which("dotnet"):
             CS_PROJ.format(src=HERE / "generated/Contract.cs"), encoding="utf-8")
         (td / "Main.cs").write_text(CS_MAIN, encoding="utf-8")
         r = subprocess.run(["dotnet", "run", "--project", str(td / "p.csproj"), "--", str(td)],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:
             check("Contract.cs 컴파일·실행", False, (r.stderr or r.stdout).strip()[:200])
         else:
@@ -157,7 +157,7 @@ else:
             if tgt.exists():
                 backup[f] = tgt.read_text(encoding="utf-8")   # 사용자 파일을 덮지 않는다
             shutil.copy(HERE / "fixtures/golden" / f, tgt)
-        r = subprocess.run(["./build.sh", "diagpcf"], cwd=FW, capture_output=True, text=True)
+        r = subprocess.run(["./build.sh", "diagpcf"], cwd=FW, capture_output=True, text=True, encoding="utf-8", errors="replace")
         check("골든 헤더로 diagpcf 빌드", r.returncode == 0,
               (r.stdout + r.stderr).strip().splitlines()[-1] if r.returncode else "")
     finally:
