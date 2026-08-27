@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 import Foundation
 import Darwin
 
@@ -312,6 +313,8 @@ private struct ContentView: View {
     @State private var profileNames: [String: String] =
         Dictionary(uniqueKeysWithValues: allProfiles.map { ($0.tag, $0.defaultName) })
     @State private var confirmReset = false
+    @State private var presetName = "기본 설정"
+    @State private var loadError: String?
     @StateObject private var inputMonitor = InputMonitor()
 
     /// 지금 순환에 들어가는 프로필만
@@ -337,6 +340,29 @@ private struct ContentView: View {
             Divider()
             footer
         }
+        .onAppear {
+            restoreLastSession()
+            // onChange 는 값이 바뀔 때만 돈다. 첫 실행에도 파일이 남게 여기서 한 번 쓴다.
+            autosave()
+        }
+        // 값이 바뀔 때마다 조용히 마지막 상태를 남긴다. 앱을 다시 켜면 여기서 복원한다.
+        .onChange(of: currentSignature) { _, _ in autosave() }
+        .alert("프리셋을 불러오지 못했습니다",
+               isPresented: Binding(get: { loadError != nil },
+                                    set: { if !$0 { loadError = nil } })) {
+            Button("확인", role: .cancel) { loadError = nil }
+        } message: {
+            Text(loadError ?? "")
+        }
+    }
+
+    /// 자동 저장 트리거용. 값이 하나라도 바뀌면 이 문자열이 바뀐다.
+    private var currentSignature: String {
+        "\(presetName)|\(profileCount)|\(gimbalDeadzone)|\(thumbDeadzone)|"
+        + "\(gimbalSaturation)|\(thumbSaturation)|\(mouseGamma)|\(fpsSpeed)|"
+        + "\(mobaSpeed)|\(deskSpeed)|\(wasdThreshold)|\(debounce)|"
+        + profileNames.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ",")
+        + "|" + mappings.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ",")
     }
 
     private var header: some View {
@@ -379,6 +405,8 @@ private struct ContentView: View {
                 } message: {
                     Text("감도·커서 속도·프로필 이름·키 배치·페이지 개수가 전부 기본값으로 돌아갑니다.")
                 }
+            Button("불러오기…", action: importPreset).controlSize(.large)
+            Button("내보내기…", action: exportPreset).controlSize(.large)
             Spacer()
             Text(status).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(2)
             Spacer()
@@ -538,6 +566,18 @@ private struct ContentView: View {
 
     private var profilesSection: some View {
         VStack(alignment: .leading, spacing: 18) {
+            GroupBox(label: boxTitle("프리셋")) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
+                        Text("이름").font(.system(size: 14)).foregroundStyle(.secondary)
+                        TextField("기본 설정", text: $presetName)
+                            .font(.system(size: 16)).controlSize(.large).frame(maxWidth: 260)
+                        Spacer()
+                    }
+                    Text("아래 ‘내보내기’ 로 저장하면 Windows 설정기에서 그대로 열립니다. 값은 바꿀 때마다 자동으로 기억됩니다.")
+                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                }.padding(.top, 4)
+            }
             GroupBox(label: boxTitle("프로필 페이지")) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("MODE 링을 짧게 누르면 아래 페이지들이 순서대로 순환합니다.")
@@ -795,6 +835,100 @@ private struct ContentView: View {
         Binding(get: { mappings[key] ?? "NA" }, set: { mappings[key] = $0 })
     }
 
+    // ---------------- 프리셋 (계약 규격 JSON) ----------------
+
+    /// 현재 화면 상태를 계약의 Preset 으로 모은다.
+    private var currentPreset: Contract.Preset {
+        Contract.Preset(
+            name: presetName,
+            profileCount: profileCount,
+            sensitivity: [
+                "gdz": gimbalDeadzone, "tdz": thumbDeadzone,
+                "gsat": gimbalSaturation, "tsat": thumbSaturation,
+                "gamma": mouseGamma, "fps": fpsSpeed, "moba": mobaSpeed,
+                "desk": deskSpeed, "wasd": wasdThreshold, "debounce": debounce,
+            ],
+            profileNames: profileNames,
+            mappings: mappings)
+    }
+
+    private func apply(_ p: Contract.Preset) {
+        presetName = p.name
+        profileCount = min(max(p.profileCount, 1), Contract.maxProfiles)
+        gimbalDeadzone = p.sensitivity["gdz"] ?? gimbalDeadzone
+        thumbDeadzone = p.sensitivity["tdz"] ?? thumbDeadzone
+        gimbalSaturation = p.sensitivity["gsat"] ?? gimbalSaturation
+        thumbSaturation = p.sensitivity["tsat"] ?? thumbSaturation
+        mouseGamma = p.sensitivity["gamma"] ?? mouseGamma
+        fpsSpeed = p.sensitivity["fps"] ?? fpsSpeed
+        mobaSpeed = p.sensitivity["moba"] ?? mobaSpeed
+        deskSpeed = p.sensitivity["desk"] ?? deskSpeed
+        wasdThreshold = p.sensitivity["wasd"] ?? wasdThreshold
+        debounce = p.sensitivity["debounce"] ?? debounce
+        profileNames = p.profileNames
+        mappings = p.mappings
+        if let i = allProfiles.firstIndex(where: { $0.tag == layoutMode }), i >= profileCount {
+            layoutMode = allProfiles[max(0, profileCount - 1)].tag
+        }
+    }
+
+    /// 마지막 상태를 두는 곳. 앱을 다시 켜면 여기서 복원한다.
+    private static var lastSessionURL: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory,
+                                            in: .userDomainMask)[0]
+            .appendingPathComponent("딸깍 감도 조절기", isDirectory: true)
+        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        return base.appendingPathComponent("last-session.json")
+    }
+
+    private func autosave() {
+        try? Contract.encodePreset(currentPreset)
+            .write(to: Self.lastSessionURL, atomically: true, encoding: .utf8)
+    }
+
+    private func restoreLastSession() {
+        guard let text = try? String(contentsOf: Self.lastSessionURL, encoding: .utf8) else { return }
+        do {
+            apply(try Contract.decodePreset(text))
+            status = "지난번 설정을 불러왔습니다 — \(presetName)"
+        } catch {
+            // 형식이 바뀌었거나 깨진 경우. 기본값으로 시작하되 조용히 넘어가지 않는다.
+            status = "지난 설정을 못 읽어 기본값으로 시작합니다: \(error.localizedDescription)"
+        }
+    }
+
+    private func importPreset() {
+        let panel = NSOpenPanel()
+        panel.title = "프리셋 불러오기"
+        panel.allowedContentTypes = [.json]
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            apply(try Contract.decodePreset(text))
+            autosave()
+            status = "\(presetName) 프리셋을 불러왔습니다. 다른 OS 에서 만든 파일도 그대로 열립니다."
+        } catch {
+            loadError = error.localizedDescription
+            status = "불러오지 못했습니다."
+        }
+    }
+
+    private func exportPreset() {
+        let panel = NSSavePanel()
+        panel.title = "프리셋 내보내기"
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = presetName.isEmpty ? "ttalkkak-preset.json"
+                                                        : "\(presetName).json"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try Contract.encodePreset(currentPreset).write(to: url, atomically: true, encoding: .utf8)
+            status = "프리셋을 내보냈습니다. Windows 설정기에서 그대로 열립니다."
+        } catch {
+            status = "내보내기 실패: \(error.localizedDescription)"
+        }
+    }
+
     /// 전체 초기화 — 감도·속도·키 배치·페이지 이름·페이지 개수를 전부 처음 상태로.
     private func reset() {
         gimbalDeadzone = 0.10; thumbDeadzone = 0.14; gimbalSaturation = 0.85; thumbSaturation = 0.90
@@ -803,6 +937,7 @@ private struct ContentView: View {
         profileCount = 4
         profileNames = Dictionary(uniqueKeysWithValues: allProfiles.map { ($0.tag, $0.defaultName) })
         layoutMode = "FPS"
+        presetName = "기본 설정"
         status = "전부 처음 상태로 되돌렸습니다 — 페이지 4개(FPS·MOBA·DESK·MEDIA), 권장 감도."
     }
 

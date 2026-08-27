@@ -24,6 +24,11 @@ jobs:
         run: python contract/verify_fixture.py
       - name: Windows 앱 빌드
         run: dotnet build windows/TtalkkakTuner.Windows.csproj -c Release
+      - name: C# 가 쓴 프리셋을 산출물로 올린다
+        uses: actions/upload-artifact@v4
+        with:
+          name: preset-from-windows
+          path: contract/fixtures/golden/preset.json
 
   macos:
     name: macOS — Swift 출력이 골든과 같은가

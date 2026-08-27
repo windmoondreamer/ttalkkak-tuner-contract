@@ -39,6 +39,8 @@ internal sealed class TunerForm : Form
     private readonly ComboBox profileBox = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly ComboBox portBox = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly Label serialStatus = new() { AutoSize = true, ForeColor = Color.DimGray };
+    private readonly Label presetStatus = new() { AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(3, 8, 3, 3) };
+    private string presetName = "기본 설정";
     private SerialPort? serial;
     private string serialText = "";
 
@@ -55,7 +57,9 @@ internal sealed class TunerForm : Form
         tabs.TabPages.Add(BuildInputTestPage());
         tabs.TabPages.Add(BuildModeGuidePage());
         Controls.Add(tabs);
-        FormClosed += (_, _) => Disconnect();
+        // 탭을 다 만든 뒤에야 값 컨트롤이 존재한다. 복원은 여기서.
+        RestoreLastSession();
+        FormClosed += (_, _) => { AutoSave(); Disconnect(); };
     }
 
     private TabPage BuildSettingsPage()
@@ -66,9 +70,16 @@ internal sealed class TunerForm : Form
         root.Controls.Add(new Label { Text = "조이스틱 감도와 PC 프로필별 키 배치를 설정한 뒤 펌웨어 폴더에 저장하세요.", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(3, 0, 3, 14) });
         root.Controls.Add(BuildSensitivityBox());
         root.Controls.Add(BuildKeyLayoutBox());
-        var save = new Button { Text = "펌웨어 설정 저장…", AutoSize = true, BackColor = Color.FromArgb(20, 105, 190), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Padding = new Padding(12, 6, 12, 6), Margin = new Padding(3, 12, 3, 3) };
+        var bar = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = false, Margin = new Padding(3, 12, 3, 3) };
+        var load = new Button { Text = "불러오기…", AutoSize = true, Padding = new Padding(12, 6, 12, 6) };
+        load.Click += (_, _) => ImportPreset();
+        var export = new Button { Text = "내보내기…", AutoSize = true, Padding = new Padding(12, 6, 12, 6) };
+        export.Click += (_, _) => ExportPreset();
+        var save = new Button { Text = "펌웨어 설정 저장…", AutoSize = true, BackColor = Color.FromArgb(20, 105, 190), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Padding = new Padding(12, 6, 12, 6) };
         save.Click += (_, _) => SaveHeaders();
-        root.Controls.Add(save);
+        bar.Controls.AddRange([load, export, save]);
+        root.Controls.Add(bar);
+        root.Controls.Add(presetStatus);
         page.Controls.Add(root);
         return page;
     }
@@ -179,6 +190,7 @@ internal sealed class TunerForm : Form
         if (dialog.ShowDialog() != DialogResult.OK) return;
         File.WriteAllText(Path.Combine(dialog.SelectedPath, "sensitivity_override.h"), SensitivityHeader(), new UTF8Encoding(false));
         File.WriteAllText(Path.Combine(dialog.SelectedPath, "mapping_override.h"), MappingHeader(), new UTF8Encoding(false));
+        AutoSave();
         MessageBox.Show("감도와 키 배치를 저장했습니다. build.sh로 펌웨어를 다시 업로드하세요.", "저장 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
@@ -196,6 +208,107 @@ internal sealed class TunerForm : Form
         Contract.DefaultProfileCount,
         Contract.Profiles.ToDictionary(p => p.Tag, p => p.DefaultName),
         mappings);
+
+    // ---------------- 프리셋 (계약 규격 JSON) ----------------
+
+    /// 마지막 상태를 두는 곳. 앱을 다시 켜면 여기서 복원한다. macOS 와 같은 형식이다.
+    private static string LastSessionPath
+    {
+        get
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "딸깍 감도 조절기");
+            Directory.CreateDirectory(dir);
+            return Path.Combine(dir, "last-session.json");
+        }
+    }
+
+    private Contract.Preset CurrentPreset()
+    {
+        SaveCurrentProfile();
+        var sens = new Dictionary<string, double>();
+        foreach (var k in Contract.SensOrder) sens[k] = (double)values[k].Value;
+        return new Contract.Preset
+        {
+            Name = presetName,
+            ProfileCount = Contract.DefaultProfileCount,
+            Sensitivity = sens,
+            ProfileNames = Contract.Profiles.ToDictionary(p => p.Tag, p => p.DefaultName),
+            Mappings = new Dictionary<string, string>(mappings),
+        };
+    }
+
+    private void Apply(Contract.Preset p)
+    {
+        presetName = p.Name;
+        foreach (var k in Contract.SensOrder)
+        {
+            if (!p.Sensitivity.TryGetValue(k, out var v)) continue;
+            var box = values[k];
+            box.Value = Math.Clamp((decimal)v, box.Minimum, box.Maximum);
+        }
+        foreach (var kv in p.Mappings) mappings[kv.Key] = kv.Value;
+        LoadProfile();
+    }
+
+    private void AutoSave()
+    {
+        try
+        {
+            File.WriteAllText(LastSessionPath, Contract.EncodePreset(CurrentPreset()),
+                              new UTF8Encoding(false));
+        }
+        catch { /* 자동 저장 실패로 작업을 막지는 않는다 */ }
+    }
+
+    private void RestoreLastSession()
+    {
+        if (!File.Exists(LastSessionPath)) { AutoSave(); return; }
+        try
+        {
+            Apply(Contract.DecodePreset(File.ReadAllText(LastSessionPath)));
+            presetStatus.Text = "지난번 설정을 불러왔습니다 — " + presetName;
+        }
+        catch (Contract.PresetException e)
+        {
+            // 형식이 바뀌었거나 깨진 경우. 기본값으로 시작하되 조용히 넘어가지 않는다.
+            presetStatus.Text = "지난 설정을 못 읽어 기본값으로 시작합니다: " + e.Message;
+        }
+        AutoSave();
+    }
+
+    private void ImportPreset()
+    {
+        using var dialog = new OpenFileDialog { Filter = "딸깍 프리셋 (*.json)|*.json", Title = "프리셋 불러오기" };
+        if (dialog.ShowDialog() != DialogResult.OK) return;
+        try
+        {
+            Apply(Contract.DecodePreset(File.ReadAllText(dialog.FileName)));
+            AutoSave();
+            presetStatus.Text = presetName + " 프리셋을 불러왔습니다. macOS 에서 만든 파일도 그대로 열립니다.";
+        }
+        catch (Contract.PresetException e)
+        {
+            MessageBox.Show(e.Message, "프리셋을 불러오지 못했습니다",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            presetStatus.Text = "불러오지 못했습니다.";
+        }
+    }
+
+    private void ExportPreset()
+    {
+        using var dialog = new SaveFileDialog
+        {
+            Filter = "딸깍 프리셋 (*.json)|*.json",
+            Title = "프리셋 내보내기",
+            FileName = (string.IsNullOrWhiteSpace(presetName) ? "ttalkkak-preset" : presetName) + ".json",
+        };
+        if (dialog.ShowDialog() != DialogResult.OK) return;
+        File.WriteAllText(dialog.FileName, Contract.EncodePreset(CurrentPreset()),
+                          new UTF8Encoding(false));
+        presetStatus.Text = "프리셋을 내보냈습니다. macOS 설정기에서 그대로 열립니다.";
+    }
 
     private void RefreshPorts()
     {
